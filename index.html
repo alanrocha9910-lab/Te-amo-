@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Daniel y Kamila - El Laberinto del Amor</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
+            color: #4a148c;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        h1 {
+            margin: 5px 0;
+            font-size: 1.5rem;
+            color: #d81b60;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #880e4f;
+            font-weight: 500;
+        }
+
+        /* Contenedor del Laberinto */
+        .canvas-container {
+            width: 100%;
+            max-width: 340px;
+            aspect-ratio: 1 / 1;
+            position: relative;
+        }
+
+        canvas {
+            background-color: #fff;
+            border: 4px solid #f48fb1;
+            box-shadow: 0 8px 16px rgba(216, 27, 96, 0.2);
+            border-radius: 12px;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Controles táctiles optimizados */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 65px);
+            grid-template-rows: repeat(3, 65px);
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            background-color: #ff80ab;
+            border: none;
+            color: white;
+            font-size: 1.6rem;
+            font-weight: bold;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 8px rgba(216, 27, 96, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .btn:active {
+            background-color: #c2185b;
+            transform: scale(0.92);
+        }
+
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 3; }
+
+        /* Efecto de corazones al ganar */
+        .heart-particle {
+            position: absolute;
+            color: #e91e63;
+            font-size: 24px;
+            pointer-events: none;
+            animation: floatUp 2s linear forwards;
+            z-index: 10;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Ayuda a Daniel a llegar con Kamila</h1>
+    <div class="subtitle">¡Cruza el laberinto del amor! 💕</div>
+    
+    <div class="canvas-container" id="gameArea">
+        <canvas id="mazeCanvas" width="400" height="400"></canvas>
+    </div>
+
+    <!-- Controles en pantalla -->
+    <div class="controls">
+        <div class="btn" id="btn-up">▲</div>
+        <div class="btn" id="btn-left">◀</div>
+        <div class="btn" id="btn-right">▶</div>
+        <div class="btn" id="btn-down">▼</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("mazeCanvas");
+        const ctx = canvas.getContext("2d");
+        const gameArea = document.getElementById("gameArea");
+
+        // Configuración del laberinto (Matriz de 10x10)
+        // 1 = Pared rosa, 0 = Camino libre
+        const maze = [,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+ ,
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+
+        const rows = maze.length;
+        const cols = maze[0].length;
+        const cellSize = canvas.width / cols;
+
+        // Posiciones iniciales (Coordenadas en la cuadrícula)
+        let daniel = { x: 1, y: 1 };  // Inicio
+        const kamila = { x: 8, y: 8 }; // Meta
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Dibujar el diseño del laberinto
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (maze[r][c] === 1) {
+                        ctx.fillStyle = "#f48fb1"; // Color de las paredes
+                        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                        // Pequeño borde para estilo visual
+                        ctx.strokeStyle = "#f06292";
+                        ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+
+            // 2. Dibujar a Kamila (La Meta)
+            ctx.fillStyle = "#ff1744";
+            ctx.font = "24px serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            // Dibujamos un corazón en su posición
+            ctx.fillText("❤️", kamila.x * cellSize + cellSize/2, kamila.y * cellSize + cellSize/2 + 2);
+            
+            // Etiqueta "Kamila"
+            ctx.fillStyle = "#880e4f";
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillText("Kamila", kamila.x * cellSize + cellSize/2, kamila.y * cellSize + cellSize/2 - 14);
+
+            // 3. Dibujar a Daniel (El Jugador)
+            ctx.fillStyle = "#29b6f6";
+            ctx.beginPath();
+            ctx.arc(daniel.x * cellSize + cellSize/2, daniel.y * cellSize + cellSize/2, cellSize/3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Etiqueta "Daniel"
+            ctx.fillStyle = "#01579b";
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillText("Daniel", daniel.x * cellSize + cellSize/2, daniel.y * cellSize + cellSize/2 - 16);
+        }
+
+        // Lógica de movimiento y detección de colisiones
+        function movePlayer(moveX, moveY) {
+            let targetX = daniel.x + moveX;
+            let targetY = daniel.y + moveY;
+
+            // Verificar si el destino es un camino libre (0) y no una pared (1)
+            if (maze[targetY][targetX] === 0) {
+                daniel.x = targetX;
+                daniel.y = targetY;
+                drawGame();
+                checkWin();
+            }
+        }
+
+        // Verificar si Daniel llegó con Kamila
+        function checkWin() {
+            if (daniel.x === kamila.x && daniel.y === kamila.y) {
+                celebrate();
+                setTimeout(() => {
+                    alert("¡Daniel ha llegado con Kamila! El amor lo puede todo. ❤️");
+                    resetGame();
+                }, 300);
+            }
+        }
+
+        // Animación de corazones flotantes al ganar
+        function celebrate() {
+            for (let i = 0; i < 15; i++) {
+                const heart = document.createElement("div");
+                heart.classList.add("heart-particle");
+                heart.innerHTML = "❤️";
+                heart.style.left = Math.random() * 80 + 10 + "%";
+                heart.style.top = Math.random() * 50 + 30 + "%";
+                gameArea.appendChild(heart);
+                
+                setTimeout(() => heart.remove(), 2000);
+            }
+        }
+
+        function resetGame() {
+            daniel = { x: 1, y: 1 };
+            drawGame();
+        }
+
+        // --- ASIGNACIÓN DE BOTONES TÁCTILES ---
+        document.getElementById("btn-up").addEventListener("touchstart", (e) => { e.preventDefault(); movePlayer(0, -1); });
+        document.getElementById("btn-down").addEventListener("touchstart", (e) => { e.preventDefault(); movePlayer(0, 1); });
+        document.getElementById("btn-left").addEventListener("touchstart", (e) => { e.preventDefault(); movePlayer(-1, 0); });
+        document.getElementById("btn-right").addEventListener("touchstart", (e) => { e.preventDefault(); movePlayer(1, 0); });
+
+        // Eventos Click de respaldo
+        document.getElementById("btn-up").addEventListener("click", () => movePlayer(0, -1));
+        document.getElementById("btn-down").addEventListener("click", () => movePlayer(0, 1));
+        document.getElementById("btn-left").addEventListener("click", () => movePlayer(-1, 0));
+        document.getElementById("btn-right").addEventListener("click", () => movePlayer(1, 0));
+
+        // Soporte para teclado por si se abre en PC
+        window.addEventListener("keydown", e => {
+            if (e.key === "ArrowUp") movePlayer(0, -1);
+            if (e.key === "ArrowDown") movePlayer(0, 1);
+            if (e.key === "ArrowLeft") movePlayer(-1, 0);
+            if (e.key === "ArrowRight") movePlayer(1, 0);
+        });
+
+        // Dibujar el juego por primera vez al cargar
+        drawGame();
+    </script>
+</body>
+</html>
